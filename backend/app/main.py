@@ -28,12 +28,13 @@ _default_origins = [
 _extra_origins = [o.strip() for o in os.getenv("CORS_ORIGINS", "").split(",") if o.strip()]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_default_origins + _extra_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+       CORSMiddleware,
+       allow_origins=_default_origins + _extra_origins,
+       allow_origin_regex=r"https://.*\.vercel\.app",
+       allow_credentials=True,
+       allow_methods=["*"],
+       allow_headers=["*"],
+   )
 
 # Include Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
