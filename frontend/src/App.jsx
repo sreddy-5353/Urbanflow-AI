@@ -57,7 +57,7 @@ export default function App() {
       <Sidebar onOpenChat={() => setChatOpen(true)} />
 
       {/* Main content grid */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto lg:overflow-hidden">
         
         {/* Top Control Bar */}
         <header className="p-4 border-b border-darkBg-border flex items-center justify-between bg-darkBg-card/40 relative">
@@ -117,7 +117,7 @@ export default function App() {
         </header>
 
         {/* Workspace Body splits */}
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden p-4 gap-4">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-visible lg:overflow-hidden p-4 gap-4">
           
           {/* Dashboard Panels Left */}
           <div className="w-full lg:w-[48%] overflow-y-auto pr-1">
@@ -153,7 +153,7 @@ export default function App() {
           </div>
 
           {/* Interactive Map Right */}
-          <div className="w-full lg:w-[52%] h-full">
+          <div className="w-full lg:w-[52%] h-[480px] lg:h-full">
             <MapView />
           </div>
 
