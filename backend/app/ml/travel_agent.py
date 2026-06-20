@@ -25,6 +25,34 @@ LANDMARKS = {
 _HYD_VIEWBOX = "78.2,17.6,78.7,17.2"
 
 
+def _nominatim_query(query: str, bounded: bool) -> Optional[Tuple[float, float]]:
+    params = {
+        "q": query,
+        "format": "json",
+        "limit": 1,
+    }
+    if bounded:
+        params["viewbox"] = _HYD_VIEWBOX
+        params["bounded"] = 1
+    resp = httpx.get(
+        "https://nominatim.openstreetmap.org/search",
+        params=params,
+        headers={
+            "Accept-Language": "en",
+            "User-Agent": "UrbanFlowAI/1.0 (contact: urbanflow-ai-project@example.com)",
+        },
+        timeout=6.0,
+    )
+    if resp.status_code == 200:
+        results = resp.json()
+        if results:
+            return (float(results[0]["lat"]), float(results[0]["lon"]))
+        print(f"[geocode_place] No results for '{query}' (bounded={bounded})")
+    else:
+        print(f"[geocode_place] Nominatim returned status {resp.status_code} for '{query}': {resp.text[:200]}")
+    return None
+
+
 def geocode_place(text: str) -> Optional[Tuple[float, float]]:
     """Resolve any free-text place name to (lat, lng) using OpenStreetMap
     Nominatim, the same geocoder the route-search sidebar uses. This lets
@@ -33,24 +61,15 @@ def geocode_place(text: str) -> Optional[Tuple[float, float]]:
     if not text:
         return None
     try:
-        resp = httpx.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={
-                "q": f"{text}, Hyderabad, India",
-                "format": "json",
-                "limit": 1,
-                "viewbox": _HYD_VIEWBOX,
-                "bounded": 1,
-            },
-            headers={"Accept-Language": "en", "User-Agent": "UrbanFlowAI/1.0"},
-            timeout=5.0,
-        )
-        if resp.status_code == 200:
-            results = resp.json()
-            if results:
-                return (float(results[0]["lat"]), float(results[0]["lon"]))
-    except Exception:
-        pass
+        # 1. Try tightly bounded to Hyderabad first (fast, precise)
+        result = _nominatim_query(f"{text}, Hyderabad, India", bounded=True)
+        if result:
+            return result
+        # 2. Fall back to an unbounded search (bounding box can be too strict
+        #    and exclude valid results near the city's edge)
+        return _nominatim_query(f"{text}, Hyderabad, India", bounded=False)
+    except Exception as e:
+        print(f"[geocode_place] Exception geocoding '{text}': {type(e).__name__}: {e}")
     return None
 
 class TravelAgentAssistant:
