@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: urbanflow-ai-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:///./urbanflow.db
+      - key: CORS_ORIGINS
+        value: https://your-vercel-app.vercel.app
