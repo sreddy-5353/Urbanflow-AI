@@ -1,10 +1,12 @@
 import re
 import random
-from typing import Dict, Any, Tuple
+import httpx
+from typing import Dict, Any, Tuple, Optional
 from app.ml.routing_algo import router
 from app.schemas import ChatResponse, RouteResponse
 
 # Key landmarks in our simulated city map (Hyderabad, India)
+# Fast path only -- anything not listed here falls back to live geocoding below.
 LANDMARKS = {
     "home": (17.4138, 78.4398),
     "office": (17.4435, 78.3772),
@@ -18,6 +20,38 @@ LANDMARKS = {
     "charminar": (17.3616, 78.4747),
     "shopping mall": (17.4330, 78.3828)
 }
+
+# Hyderabad bounding box used to bias/limit geocoding results
+_HYD_VIEWBOX = "78.2,17.6,78.7,17.2"
+
+
+def geocode_place(text: str) -> Optional[Tuple[float, float]]:
+    """Resolve any free-text place name to (lat, lng) using OpenStreetMap
+    Nominatim, the same geocoder the route-search sidebar uses. This lets
+    the chatbot understand places beyond the small hardcoded LANDMARKS list."""
+    text = text.strip()
+    if not text:
+        return None
+    try:
+        resp = httpx.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "q": f"{text}, Hyderabad, India",
+                "format": "json",
+                "limit": 1,
+                "viewbox": _HYD_VIEWBOX,
+                "bounded": 1,
+            },
+            headers={"Accept-Language": "en", "User-Agent": "UrbanFlowAI/1.0"},
+            timeout=5.0,
+        )
+        if resp.status_code == 200:
+            results = resp.json()
+            if results:
+                return (float(results[0]["lat"]), float(results[0]["lon"]))
+    except Exception:
+        pass
+    return None
 
 class TravelAgentAssistant:
     def __init__(self):
@@ -56,20 +90,37 @@ class TravelAgentAssistant:
             if " to " in from_place:
                 from_place = from_place.split(" to ")[0].strip()
             
+            matched = False
             for name, coord in LANDMARKS.items():
                 if name in from_place:
                     start_coord = coord
                     origin_name = name.title()
+                    matched = True
                     break
+
+            if not matched and from_place:
+                geocoded = geocode_place(from_place)
+                if geocoded:
+                    start_coord = geocoded
+                    origin_name = from_place.title()
                     
         if to_match:
             to_place = to_match.group(1).strip()
+            matched = False
             for name, coord in LANDMARKS.items():
                 if name in to_place:
                     end_coord = coord
                     destination_name = name.title()
                     detected_route_intent = True
+                    matched = True
                     break
+
+            if not matched and to_place:
+                geocoded = geocode_place(to_place)
+                if geocoded:
+                    end_coord = geocoded
+                    destination_name = to_place.title()
+                    detected_route_intent = True
         else:
             # Check if any landmark itself is in the query (assumed destination)
             for name, coord in LANDMARKS.items():
