@@ -76,7 +76,14 @@ class TravelAgentAssistant:
     def __init__(self):
         pass
 
-    def process_message(self, message: str, current_lat: float = None, current_lng: float = None) -> ChatResponse:
+    def process_message(
+        self,
+        message: str,
+        current_lat: float = None,
+        current_lng: float = None,
+        origin_override: tuple = None,
+        dest_override: tuple = None,
+    ) -> ChatResponse:
         msg = message.lower().strip()
         
         # Default start and end coordinates if none detected
@@ -99,11 +106,17 @@ class TravelAgentAssistant:
             preference = "fastest"
 
         # 2. Extract origin and destination landmarks
-        # Simple regex matching for "to X" or "from Y to Z"
+        # Priority: client-resolved override (geocoded in the browser) >
+        # hardcoded LANDMARKS list > server-side geocoding (best-effort,
+        # may be blocked by Nominatim on some hosts -- see geocode_place).
         to_match = re.search(r"to\s+([a-zA-Z\s]+)", msg)
         from_match = re.search(r"from\s+([a-zA-Z\s]+)", msg)
-        
-        if from_match:
+
+        if origin_override:
+            o_lat, o_lng, o_name = origin_override
+            start_coord = (o_lat, o_lng)
+            origin_name = (o_name or "Origin").title()
+        elif from_match:
             from_place = from_match.group(1).strip()
             # Clean up trailing strings (e.g. "from home to work" -> from_place="home")
             if " to " in from_place:
@@ -122,8 +135,13 @@ class TravelAgentAssistant:
                 if geocoded:
                     start_coord = geocoded
                     origin_name = from_place.title()
-                    
-        if to_match:
+
+        if dest_override:
+            d_lat, d_lng, d_name = dest_override
+            end_coord = (d_lat, d_lng)
+            destination_name = (d_name or "Destination").title()
+            detected_route_intent = True
+        elif to_match:
             to_place = to_match.group(1).strip()
             matched = False
             for name, coord in LANDMARKS.items():
