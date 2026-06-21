@@ -1,64 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useMobility } from '../context/MobilityContext';
+import { geocodeLocation, PRESETS } from '../utils/geocode';
 import { 
   Navigation, TrafficCone, Shield, Leaf, IndianRupee, 
   Bell, AlertCircle, Bot, LogOut, Check, Sparkles, MapPin, 
   Activity, ShieldAlert, Award
 } from 'lucide-react';
 
-// Hardcoded landmark coordinate options matching NLP agent (Hyderabad, India)
-const PRESETS = [
-  { name: "Current Location", lat: 17.3850, lng: 78.4867 },
-  { name: "Home (Banjara Hills)", lat: 17.4138, lng: 78.4398 },
-  { name: "Office (HITEC City)", lat: 17.4435, lng: 78.3772 },
-  { name: "Rajiv Gandhi Int'l Airport", lat: 17.2403, lng: 78.4294 },
-  { name: "Hussain Sagar Lake", lat: 17.4239, lng: 78.4738 },
-  { name: "Osmania University", lat: 17.4137, lng: 78.5283 },
-  { name: "Charminar (Downtown)", lat: 17.3616, lng: 78.4747 },
-  { name: "Inorbit Mall (Shopping)", lat: 17.4330, lng: 78.3828 }
-];
-
-// Geocode a free-text location using OpenStreetMap Nominatim API.
-// Falls back to the PRESETS list so known landmarks always resolve quickly.
-async function geocodeLocation(text) {
-  // 1. Fast path: exact or partial match in local preset list
-  const normalised = text.trim().toLowerCase();
-  const preset = PRESETS.find(p => p.name.toLowerCase().includes(normalised));
-  if (preset) return preset;
-
-  // 2. Nominatim lookup (Hyderabad, India bias)
-  try {
-    const params = new URLSearchParams({
-      q: text,
-      format: "json",
-      limit: "1",
-      countrycodes: "in",
-      viewbox: "78.20,17.60,78.75,17.20",  // Hyderabad bounding box
-      bounded: "1",
-    });
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-      headers: { "Accept-Language": "en", "User-Agent": "UrbanFlowAI/1.0" }
-    });
-    if (resp.ok) {
-      const results = await resp.json();
-      if (results.length > 0) {
-        const r = results[0];
-        return {
-          name: text,
-          lat: parseFloat(r.lat),
-          lng: parseFloat(r.lon),
-          isSnapped: false
-        };
-      }
-    }
-  } catch (e) {
-    console.warn("Nominatim geocoding failed:", e);
-  }
-
-  // 3. If Nominatim also fails (network error etc.) return null so the caller
-  //    can show an error rather than plot a random point.
-  return null;
-}
 
 export default function Sidebar({ onOpenChat }) {
   const {
