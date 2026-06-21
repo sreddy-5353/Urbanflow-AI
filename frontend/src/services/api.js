@@ -145,13 +145,19 @@ export const api = {
   },
   
   // Chat API
-  sendMessage: (message, lat = null, lng = null) => {
+  sendMessage: (message, lat = null, lng = null, originOverride = null, destOverride = null) => {
     return request("/chat", {
       method: "POST",
       body: JSON.stringify({
         message,
         current_lat: lat,
-        current_lng: lng
+        current_lng: lng,
+        origin_lat: originOverride?.lat ?? null,
+        origin_lng: originOverride?.lng ?? null,
+        origin_name: originOverride?.name ?? null,
+        dest_lat: destOverride?.lat ?? null,
+        dest_lng: destOverride?.lng ?? null,
+        dest_name: destOverride?.name ?? null,
       }),
     });
   },
