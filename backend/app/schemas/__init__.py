@@ -159,6 +159,12 @@ class ChatRequest(BaseModel):
     message: str
     current_lat: Optional[float] = None
     current_lng: Optional[float] = None
+    origin_lat: Optional[float] = None
+    origin_lng: Optional[float] = None
+    origin_name: Optional[str] = None
+    dest_lat: Optional[float] = None
+    dest_lng: Optional[float] = None
+    dest_name: Optional[str] = None
 
 class ChatResponse(BaseModel):
     reply: str
