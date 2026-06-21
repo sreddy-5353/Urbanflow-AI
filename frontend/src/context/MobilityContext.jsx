@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { geocodeLocation, extractChatPlaces } from '../utils/geocode';
 
 const MobilityContext = createContext();
 
@@ -343,7 +344,25 @@ export const MobilityProvider = ({ children }) => {
     setChatLoading(true);
     
     try {
-      const replyData = await api.sendMessage(text, currentLocation.lat, currentLocation.lng);
+      // Resolve any place names mentioned in the message from the browser
+      // (not the backend server) so Nominatim doesn't block the request --
+      // this mirrors how the route-search sidebar already works reliably.
+      const { toPlace, fromPlace } = extractChatPlaces(text);
+      let originOverride = null;
+      let destOverride = null;
+
+      if (fromPlace) {
+        const resolved = await geocodeLocation(fromPlace);
+        if (resolved) originOverride = resolved;
+      }
+      if (toPlace) {
+        const resolved = await geocodeLocation(toPlace);
+        if (resolved) destOverride = resolved;
+      }
+
+      const replyData = await api.sendMessage(
+        text, currentLocation.lat, currentLocation.lng, originOverride, destOverride
+      );
       setChatMessages(prev => [...prev, { sender: "ai", text: replyData.reply }]);
       
       // Check chatbot suggested action
